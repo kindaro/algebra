@@ -1,20 +1,26 @@
+{-# LANGUAGE
+    TypeSynonymInstances
+  #-}
+
 module Algebra where
 
-data Expr a = Branch [a] | Leaf Int
+import Data.Bifunctor
 
-instance Functor Expr where
-    fmap f (Branch xs) = Branch (fmap f xs)
-    fmap _ (Leaf   i ) = Leaf    i
+data Expr a i = Branch [a] | Leaf i
 
-newtype Fix a = Fix { unFix :: a (Fix a) }
+instance Bifunctor Expr where
+    bimap f _ (Branch xs) = Branch (fmap f xs)
+    bimap _ g (Leaf   i ) = Leaf   (g i)
 
-branch = Fix . Branch
-leaf   = Fix . Leaf
+newtype Fix2 a i = Fix2 { unFix2 :: a (Fix2 a i) i }
+
+branch = Fix2 . Branch
+leaf   = Fix2 . Leaf
 
 evalSum (Branch xs) = sum xs
 evalSum (Leaf   i ) =     i
 
-cata f = f . fmap (cata f) . unFix
+cata2 f g = f . bimap (cata2 f g) g . unFix2
 
-λ cata evalSum $ branch [branch [leaf 1, leaf 2], leaf 3]
-6
+-- λ cata2 evalSum (+1) $ branch [branch [leaf 1, leaf 2], leaf 3]
+-- 9
