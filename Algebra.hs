@@ -2,6 +2,7 @@
     FlexibleInstances
   , UndecidableInstances
   #-}
+
 module Algebra where
 
 import Data.List
