@@ -6,7 +6,7 @@ module Algebra where
 
 import Data.List
 
-data Expr a = Branch [a] | Leaf Int | Bud String deriving Show
+data Expr a = Branch [a] | Leaf !Int | Bud !String deriving Show
 
 instance Functor Expr where
     fmap f (Branch xs) = Branch (fmap f xs)
