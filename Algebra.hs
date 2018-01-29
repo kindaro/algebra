@@ -31,7 +31,7 @@ leaf   = Fix . Leaf
 bud    = Fix . Bud
 
 evalSum :: Expr (Fix Expr) -> Fix Expr
-evalSum (Branch fxs) = branchOrLeaf . fmap Fix . concat $ separated
+evalSum (Branch fxs) = floatSingleton . fmap Fix . concat $ separated
   where
     xs :: [Expr (Fix Expr)]
     xs = unFix <$> fxs
@@ -50,6 +50,7 @@ evalSum (Branch fxs) = branchOrLeaf . fmap Fix . concat $ separated
     eval' :: [Expr a] -> Int
     eval' [ ] = 0
     eval' (Leaf i: xs) = i + eval' xs
+    eval'  x  = error $ "Algorithmic error: eval' can only evaluate leaves."
 
     evaluable :: Expr a -> Bool
     evaluable x = case x of
@@ -57,10 +58,12 @@ evalSum (Branch fxs) = branchOrLeaf . fmap Fix . concat $ separated
         Leaf   i  -> True
         Bud    s  -> False
 
-    branchOrLeaf [x] = x
-    branchOrLeaf  xs = Fix . Branch $ xs
-
 evalSum x = Fix x
+
+floatSingleton :: [Fix Expr] -> Fix Expr
+floatSingleton [x] = x
+floatSingleton  xs = Fix . Branch $ xs
+
 
 cata f = f . fmap (cata f) . unFix
 
