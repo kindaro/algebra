@@ -2,7 +2,7 @@
     TypeSynonymInstances
   #-}
 
-module Algebra where
+module Algebra2 where
 
 import Data.Bifunctor
 
@@ -22,5 +22,6 @@ evalSum (Leaf   i ) =     i
 
 cata2 f g = f . bimap (cata2 f g) g . unFix2
 
+-- |
 -- λ cata2 evalSum (+1) $ branch [branch [leaf 1, leaf 2], leaf 3]
 -- 9
