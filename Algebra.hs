@@ -8,10 +8,7 @@
 module Algebra where
 
 import Data.List
-import Data.Function (on)
-import Control.Monad ((<=<))
 import Control.Monad.Trans.RWS.Strict
-import Control.Monad.Trans (lift)
 
 data Expr a = Branch [a] | Leaf !Int | Bud !String deriving (Eq, Show)
 
@@ -71,50 +68,31 @@ evalSum e@(Branch' xs) = me' >>= \e' ->
         else tell [(e, e')] >> return (Fix e')
   where
     me' :: Eval EF
-    me' = (floatSingleton . fmap Fix . concat) <$> (separated <=< splitted $ xs)
+    me' = do 
+        xs' <- sequence . fmap evalTotal $ xs
+        return . deforest . fuseLeaves $ xs'
 evalSum x = return $ Fix x
 
-splitted :: [EF] -> Eval [[EF]]
-splitted xs = do
-    decorated <- sequence $ fmap (\x -> evaluable x >>= \flag -> return (x, flag)) xs
-    return $ (fmap.fmap) fst $ groupBy ((==) `on` snd) $ decorated 
+evalTotal :: Expr a -> Eval (Expr a)
+evalTotal (Leaf i) = return (Leaf i)
+evalTotal (Bud  s) = (asks . lookup $ s) >>= \x ->
+    return $ case x of
+        Nothing -> Bud s
+        Just i  -> Leaf i
+evalTotal x = return x
 
-separated :: [[EF]] -> Eval [[EF]]
-separated splitted =
-    case splitted of
-        [ ] -> return [ ]
-        this@ ((x: _): ys) -> do
-            flag <- evaluable x
-            let evals = (if flag then [eval] else [ ]) ++ cycle [return, eval]
-            sequence $ zipWith ($) evals this
+fuseLeaves :: [EF] -> [EF]
+fuseLeaves = foldl' (+:) [ ]
+  where
+    [ ]    +: x = [x]
+    (y:ys) +: x = case (x, y) of
+        (Leaf u, Leaf v) -> Leaf (u + v) : ys
+        (_, _) -> x: y: ys
 
-            -- Due to the properties of `group`, `eval` should never be invoked on instances
-            -- of Expr that are not evaluable. In such case `eval` will turn everything into
-            -- Nothing.
-
-eval :: [Expr a] -> Eval [Expr a]
-eval = fmap (pure . Leaf) . eval'
-
-eval' :: [Expr a] -> Eval Int
-eval' [ ] = return 0
-eval' (Leaf i: xs) = eval' xs >>= return . (+i)
-eval' (Bud  s: xs) = asks (lookup s) >>= \maybei ->
-    case maybei of
-        Nothing -> lift Nothing
-        Just i  -> eval' xs >>= lift . Just . (+i)
-
-evaluable :: Expr a -> Eval Bool
-evaluable x = case x of
-    Branch _ -> return False
-    Leaf   _ -> return True
-    Bud    s -> asks (lookup s) >>= \flag ->
-        case flag of
-           Just _  -> return True
-           Nothing -> return False
-
-floatSingleton :: [F] -> EF
-floatSingleton [x] = unFix x
-floatSingleton  xs = Branch xs
+deforest :: [EF] -> EF
+deforest [ ] = Branch' [ ]
+deforest [x] = x
+deforest  xs = Branch' xs
 
 
 cata :: Functor f => (f b -> b) -> Fix f -> b
