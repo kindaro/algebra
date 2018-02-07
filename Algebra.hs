@@ -24,8 +24,8 @@ instance Foldable Expr where
 
 instance Traversable Expr where
     traverse f (Branch xs) = fmap Branch $ traverse f xs
-    traverse f (Leaf   i ) = pure $ Leaf i
-    traverse f (Bud    s ) = pure $ Bud  s
+    traverse _ (Leaf   i ) = pure $ Leaf i
+    traverse _ (Bud    s ) = pure $ Bud  s
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
@@ -104,9 +104,9 @@ eval' (Bud  s: xs) = asks (lookup s) >>= \maybei ->
 
 evaluable :: Expr a -> Eval Bool
 evaluable x = case x of
-    Branch xs -> return False
-    Leaf   i  -> return True
-    Bud    s  -> asks (lookup s) >>= \flag ->
+    Branch _ -> return False
+    Leaf   _ -> return True
+    Bud    s -> asks (lookup s) >>= \flag ->
         case flag of
            Just _  -> return True
            Nothing -> return False
