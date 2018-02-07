@@ -35,10 +35,6 @@ instance Show (a (Fix a)) => Show (Fix a) where
 instance Eq (a (Fix a)) => Eq (Fix a) where
     (Fix x) == (Fix y) = x == y
 
-branch = Fix . Branch
-leaf   = Fix . Leaf
-bud    = Fix . Bud
-
 type EF = Expr (Fix Expr)
 
 unbranch :: EF -> Maybe [EF]
