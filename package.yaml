@@ -1,0 +1,27 @@
+name: algebra
+version: 0.1.0.0
+license: ISC
+
+ghc-options: -Wall -Wno-name-shadowing
+
+dependencies:
+    - base >4 && <5
+    - transformers
+    - mtl
+
+library:
+  source-dirs: .
+  exposed-modules:
+      - Algebra
+      - Algebra2
+  other-modules: []
+
+
+tests:
+    doctest:
+        main: doctest-driver.hs
+        source-dirs: .
+        dependencies:
+            - doctest
+            - doctest-discover
+        other-modules: []
