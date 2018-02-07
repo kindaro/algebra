@@ -37,27 +37,29 @@ branch = Fix . Branch
 leaf   = Fix . Leaf
 bud    = Fix . Bud
 
-type Eval = RWST [(String, Int)] [(Expr (Fix Expr), Expr (Fix Expr))] () Maybe
+type EF = Expr (Fix Expr)
 
-evalSum :: Expr (Fix Expr) -> Eval (Fix Expr)
+type Eval = RWST [(String, Int)] [(EF, EF)] () Maybe
+
+evalSum :: EF -> Eval (Fix Expr)
 evalSum e@(Branch fxs) = me' >>= \e' ->
     if e == e'
         then return (Fix e)
         else tell [(e, e')] >> return (Fix e')
 
   where
-    xs :: [Expr (Fix Expr)]
+    xs :: [EF]
     xs = unFix <$> fxs
 
-    me' :: Eval (Expr (Fix Expr))
+    me' :: Eval (EF)
     me' = (floatSingleton . fmap Fix . concat) <$> separated
 
-    splitted :: Eval [[Expr (Fix Expr)]]
+    splitted :: Eval [[EF]]
     splitted = do
         decorated <- sequence $ fmap (\x -> evaluable x >>= \flag -> return (x, flag)) xs
         return $ (fmap.fmap) fst $ groupBy ((==) `on` snd) $ decorated 
 
-    separated :: Eval [[Expr (Fix Expr)]]
+    separated :: Eval [[EF]]
     separated = splitted >>= \splitted ->
         case splitted of
             [ ] -> return [ ]
@@ -92,7 +94,7 @@ evaluable x = case x of
            Just _  -> return True
            Nothing -> return False
 
-floatSingleton :: [Fix Expr] -> Expr (Fix Expr)
+floatSingleton :: [Fix Expr] -> EF
 floatSingleton [x] = unFix x
 floatSingleton  xs = Branch xs
 
