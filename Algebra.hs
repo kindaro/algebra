@@ -9,6 +9,7 @@ module Algebra where
 
 import Data.List
 import Data.Function (on)
+import Control.Monad ((<=<))
 import Control.Monad.Trans.RWS.Strict
 import Control.Monad.Trans (lift)
 
@@ -68,30 +69,28 @@ evalSum e@(Branch' xs) = me' >>= \e' ->
     if e == e'
         then return (Fix e)
         else tell [(e, e')] >> return (Fix e')
-
   where
     me' :: Eval EF
-    me' = (floatSingleton . fmap Fix . concat) <$> separated
-
-    splitted :: Eval [[EF]]
-    splitted = do
-        decorated <- sequence $ fmap (\x -> evaluable x >>= \flag -> return (x, flag)) xs
-        return $ (fmap.fmap) fst $ groupBy ((==) `on` snd) $ decorated 
-
-    separated :: Eval [[EF]]
-    separated = splitted >>= \splitted ->
-        case splitted of
-            [ ] -> return [ ]
-            this@ ((x: _): ys) -> do
-                flag <- evaluable x
-                let evals = (if flag then [eval] else [ ]) ++ cycle [return, eval]
-                sequence $ zipWith ($) evals this
-
-                -- Due to the properties of `group`, `eval` should never be invoked on instances
-                -- of Expr that are not evaluable. In such case `eval` will turn everything into
-                -- Nothing.
-
+    me' = (floatSingleton . fmap Fix . concat) <$> (separated <=< splitted $ xs)
 evalSum x = return $ Fix x
+
+splitted :: [EF] -> Eval [[EF]]
+splitted xs = do
+    decorated <- sequence $ fmap (\x -> evaluable x >>= \flag -> return (x, flag)) xs
+    return $ (fmap.fmap) fst $ groupBy ((==) `on` snd) $ decorated 
+
+separated :: [[EF]] -> Eval [[EF]]
+separated splitted =
+    case splitted of
+        [ ] -> return [ ]
+        this@ ((x: _): ys) -> do
+            flag <- evaluable x
+            let evals = (if flag then [eval] else [ ]) ++ cycle [return, eval]
+            sequence $ zipWith ($) evals this
+
+            -- Due to the properties of `group`, `eval` should never be invoked on instances
+            -- of Expr that are not evaluable. In such case `eval` will turn everything into
+            -- Nothing.
 
 eval :: [Expr a] -> Eval [Expr a]
 eval = fmap (pure . Leaf) . eval'
