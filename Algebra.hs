@@ -74,7 +74,6 @@ evalSum e@(Branch' xs) = me' >>= \e' ->
 evalSum x = return $ Fix x
 
 evalTotal :: Expr a -> Eval (Expr a)
-evalTotal (Leaf i) = return (Leaf i)
 evalTotal (Bud  s) = (asks . lookup $ s) >>= \x ->
     return $ case x of
         Nothing -> Bud s
