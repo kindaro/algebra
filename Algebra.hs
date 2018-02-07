@@ -105,5 +105,5 @@ cataM :: (Monad f, Traversable a) => AlgebraM a f b -> Fix a -> f b
 cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 
 -- |
--- λ runRWS (cataM evalSum $ branch [branch [leaf 1, leaf 2], leaf 4, branch [bud "x", leaf 8]]) [("x", 32)] ()
--- (Leaf 47,(),[(Branch [Leaf 1,Leaf 2],Leaf 3),(Branch [Bud "x",Leaf 8],Leaf 40),(Branch [Leaf 3,Leaf 4,Leaf 40],Leaf 47)])
+-- λ runRWST (cataM evalSum $ branch [branch [leaf 1, leaf 2], leaf 4, branch [bud "x", leaf 8]]) [("x", 32)] ()
+-- Just (Leaf 47,(),[(Branch [Leaf 1,Leaf 2],Leaf 3),(Branch [Bud "x",Leaf 8],Leaf 40),(Branch [Leaf 3,Leaf 4,Leaf 40],Leaf 47)])
