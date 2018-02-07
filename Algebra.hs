@@ -97,6 +97,7 @@ floatSingleton [x] = unFix x
 floatSingleton  xs = Branch xs
 
 
+cata :: Functor f => (f b -> b) -> Fix f -> b
 cata f = f . fmap (cata f) . unFix
 
 type AlgebraM a f b = a b -> f b
