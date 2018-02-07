@@ -1,6 +1,8 @@
 {-# LANGUAGE
     FlexibleInstances
   , UndecidableInstances
+  , PatternSynonyms
+  , ViewPatterns
   #-}
 
 module Algebra where
@@ -39,18 +41,37 @@ bud    = Fix . Bud
 
 type EF = Expr (Fix Expr)
 
+unbranch :: EF -> Maybe [EF]
+unbranch (Branch fxs) = Just $ unFix <$> fxs
+unbranch _ = Nothing
+
+pattern Branch' :: [EF] -> EF
+pattern Branch' xs <- (unbranch -> Just xs)
+    where Branch' = Branch . fmap Fix
+
+-- |
+-- λ :{
+--      let f (Branch' x) = x
+--      in  f $ Branch' [Leaf 1, Bud "x"]
+-- :}
+-- [Leaf 1,Bud "x"]
+--
+-- λ :{
+--      let f (Branch' x) = x
+--      in  f $ Leaf 1
+-- :}
+-- *** Exception: <interactive>:...: Non-exhaustive patterns in function f
+-- <BLANKLINE>
+
 type Eval = RWST [(String, Int)] [(EF, EF)] () Maybe
 
 evalSum :: EF -> Eval (Fix Expr)
-evalSum e@(Branch fxs) = me' >>= \e' ->
+evalSum e@(Branch' xs) = me' >>= \e' ->
     if e == e'
         then return (Fix e)
         else tell [(e, e')] >> return (Fix e')
 
   where
-    xs :: [EF]
-    xs = unFix <$> fxs
-
     me' :: Eval (EF)
     me' = (floatSingleton . fmap Fix . concat) <$> separated
 
