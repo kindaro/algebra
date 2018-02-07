@@ -35,7 +35,9 @@ instance Show (a (Fix a)) => Show (Fix a) where
 instance Eq (a (Fix a)) => Eq (Fix a) where
     (Fix x) == (Fix y) = x == y
 
-type EF = Expr (Fix Expr)
+type F = Fix Expr
+
+type EF = Expr F
 
 unbranch :: EF -> Maybe [EF]
 unbranch (Branch fxs) = Just $ unFix <$> fxs
@@ -61,14 +63,14 @@ pattern Branch' xs <- (unbranch -> Just xs)
 
 type Eval = RWST [(String, Int)] [(EF, EF)] () Maybe
 
-evalSum :: EF -> Eval (Fix Expr)
+evalSum :: EF -> Eval F
 evalSum e@(Branch' xs) = me' >>= \e' ->
     if e == e'
         then return (Fix e)
         else tell [(e, e')] >> return (Fix e')
 
   where
-    me' :: Eval (EF)
+    me' :: Eval EF
     me' = (floatSingleton . fmap Fix . concat) <$> separated
 
     splitted :: Eval [[EF]]
@@ -111,7 +113,7 @@ evaluable x = case x of
            Just _  -> return True
            Nothing -> return False
 
-floatSingleton :: [Fix Expr] -> EF
+floatSingleton :: [F] -> EF
 floatSingleton [x] = unFix x
 floatSingleton  xs = Branch xs
 
