@@ -61,11 +61,12 @@ pattern Branch' xs <- (unbranch -> Just xs)
 
 type Eval = RWST [(String, Int)] [(EF, EF)] () Maybe
 
+compareAndTell :: (Monad m, Eq a) => a -> a -> RWST r [(a, a)] s m a
+compareAndTell e e' | e == e'   =                   return e
+                    | otherwise = tell [(e, e')] >> return e'
+
 evalSum :: EF -> Eval F
-evalSum e@(Branch' xs) = me' >>= \e' ->
-    if e == e'
-        then return (Fix e)
-        else tell [(e, e')] >> return (Fix e')
+evalSum e@(Branch' xs) = me' >>= \e' -> fmap Fix $ compareAndTell e e'
   where
     me' :: Eval EF
     me' = do 
