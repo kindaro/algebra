@@ -50,15 +50,9 @@ getThings None       = [ ]
 -- ### An example of how we may simplify the same logic with the help of
 --   pattern synonyms.
 
--- | This helper function is necessary (?) in order for it to be possible to
---   define the pattern synonym.
-unWrapAll :: MaybeWrappedThings a -> Maybe [a]
-unWrapAll (Some wxs) = Just (coerce wxs)
-unWrapAll None = Nothing
-
 -- | This is the pattern synonym that allows us to somewhat simplify getThings.
 pattern Some' :: [a] -> MaybeWrappedThings a
-pattern Some' xs <- (unWrapAll -> Just xs)
+pattern Some' xs <- Some (coerce -> xs)
   where Some' = Some . coerce
 
 -- | This is how we may define our data with the pattern synonym.
