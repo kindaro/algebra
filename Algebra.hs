@@ -66,20 +66,16 @@ compareAndTell e e' | e == e'   =                   return e
                     | otherwise = tell [(e, e')] >> return e'
 
 evalSum :: EF -> Eval F
-evalSum e@(Branch' xs) = me' >>= \e' -> fmap Fix $ compareAndTell e e'
-  where
-    me' :: Eval EF
-    me' = do 
-        xs' <- sequence . fmap evalTotal $ xs
-        return . deforest . fuseLeaves $ xs'
-evalSum x = return $ Fix x
+evalSum e@(Branch' xs) = Fix <$> compareAndTell e (deforest . fuseLeaves $ xs)
+evalSum e@(Bud _)      = Fix <$> evalBud e
+evalSum x              = Fix <$> return x
 
-evalTotal :: Expr a -> Eval (Expr a)
-evalTotal (Bud  s) = (asks . lookup $ s) >>= \x ->
-    return $ case x of
+evalBud :: EF -> Eval EF
+evalBud e@(Bud  s) = (asks . lookup $ s) >>= \x ->
+    compareAndTell e $ case x of
         Nothing -> Bud s
         Just i  -> Leaf i
-evalTotal x = return x
+evalBud x = return x
 
 fuseLeaves :: [EF] -> [EF]
 fuseLeaves = foldl' (+:) [ ]
@@ -104,5 +100,15 @@ cataM :: (Monad f, Traversable a) => AlgebraM a f b -> Fix a -> f b
 cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 
 -- |
--- λ runRWST (cataM evalSum . Fix $ Branch' [Branch' [Leaf 1, Leaf 2], Leaf 4, Branch' [Bud "x", Leaf 8]]) [("x", 32)] ()
--- Just (Leaf 47,(),[(Branch [Leaf 1,Leaf 2],Leaf 3),(Branch [Bud "x",Leaf 8],Leaf 40),(Branch [Leaf 3,Leaf 4,Leaf 40],Leaf 47)])
+-- λ :{
+--      let e = Branch' [Branch' [Leaf 1, Leaf 2], Leaf 4, Branch' [Bud "x", Leaf 8]]
+--          (Just (res, log)) = evalRWST (cataM evalSum . Fix $ e) [("x", 32)] ()
+--      in res
+-- :}
+-- Leaf 47
+-- λ :{
+--      let e = Branch' [Branch' [Leaf 1, Leaf 2], Leaf 4, Branch' [Bud "x", Leaf 8]]
+--          (Just (res, log)) = evalRWST (cataM evalSum . Fix $ e) [("x", 32)] ()
+--      in log
+-- :}
+-- [(Branch [Leaf 1,Leaf 2],Leaf 3),(Bud "x",Leaf 32),(Branch [Leaf 32,Leaf 8],Leaf 40),(Branch [Leaf 3,Leaf 4,Leaf 40],Leaf 47)]
