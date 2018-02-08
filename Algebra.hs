@@ -10,6 +10,7 @@ module Algebra where
 
 import Data.List
 import Control.Monad.Trans.RWS.Strict
+import Data.Coerce
 
 data Expr a = Branch [a] | Leaf !Int | Bud !String deriving (Eq, Show)
 
@@ -38,12 +39,8 @@ type F = Fix Expr
 
 type EF = Expr F
 
-unbranch :: EF -> Maybe [EF]
-unbranch (Branch fxs) = Just $ unFix <$> fxs
-unbranch _ = Nothing
-
 pattern Branch' :: [EF] -> EF
-pattern Branch' xs <- (unbranch -> Just xs)
+pattern Branch' xs <- Branch (coerce -> xs)
     where Branch' = Branch . fmap Fix
 
 -- |
