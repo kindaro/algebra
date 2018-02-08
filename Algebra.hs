@@ -3,6 +3,7 @@
   , UndecidableInstances
   , PatternSynonyms
   , ViewPatterns
+  , GeneralizedNewtypeDeriving
   #-}
 
 module Algebra where
@@ -59,11 +60,21 @@ pattern Branch' xs <- (unbranch -> Just xs)
 -- *** Exception: <interactive>:...: Non-exhaustive patterns in function f
 -- <BLANKLINE>
 
-type Eval = RWST [(String, Int)] [(EF, EF)] () Maybe
+type Eval = RWST [(String, Int)] (Log (Message EF)) () Maybe
 
-compareAndTell :: (Monad m, Eq a) => a -> a -> RWST r [(a, a)] s m a
+data Message a = Message a a deriving Eq
+
+instance Show a => Show (Message a) where
+    show (Message e e') = show e ++ " => " ++ show e'
+
+newtype Log a = Log { unLog :: [a] } deriving Monoid
+
+instance Show a => Show (Log a) where
+    show = unlines . fmap show . unLog
+
+compareAndTell :: (Monad m, Eq a) => a -> a -> RWST r (Log (Message a)) s m a
 compareAndTell e e' | e == e'   =                   return e
-                    | otherwise = tell [(e, e')] >> return e'
+                    | otherwise = tell (Log [Message e e']) >> return e'
 
 evalSum :: EF -> Eval F
 evalSum e@(Branch' xs) = Fix <$> compareAndTell e (deforest . fuseLeaves $ xs)
@@ -111,4 +122,8 @@ cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 --          (Just (res, log)) = evalRWST (cataM evalSum . Fix $ e) [("x", 32)] ()
 --      in log
 -- :}
--- [(Branch [Leaf 1,Leaf 2],Leaf 3),(Bud "x",Leaf 32),(Branch [Leaf 32,Leaf 8],Leaf 40),(Branch [Leaf 3,Leaf 4,Leaf 40],Leaf 47)]
+-- Branch [Leaf 1,Leaf 2] => Leaf 3
+-- Bud "x" => Leaf 32
+-- Branch [Leaf 32,Leaf 8] => Leaf 40
+-- Branch [Leaf 3,Leaf 4,Leaf 40] => Leaf 47
+-- <BLANKLINE>
