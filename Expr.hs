@@ -89,6 +89,7 @@ deforest  xs = Branch' xs
 --      in res
 -- :}
 -- Leaf 47
+--
 -- λ :{
 --      let e = Branch' [Branch' [Leaf 1, Leaf 2], Leaf 4, Branch' [Bud "x", Leaf 8]]
 --          (Just (res, log)) = evalRWST (cataM evalSum . Fix $ e) [("x", 32)] ()
