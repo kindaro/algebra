@@ -9,6 +9,7 @@
 module Algebra where
 
 import Data.List
+import Control.DeepSeq (NFData, rnf)
 import Control.Monad.Trans.RWS.Strict
 import Data.Coerce
 
@@ -34,6 +35,9 @@ instance Show (a (Fix a)) => Show (Fix a) where
 
 instance Eq (a (Fix a)) => Eq (Fix a) where
     (Fix x) == (Fix y) = x == y
+
+instance NFData (a (Fix a)) => NFData (Fix a) where
+    rnf (Fix x) = rnf x
 
 type F = Fix Expr
 
