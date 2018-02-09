@@ -47,10 +47,10 @@ instance NFData (a (Fix a)) => NFData (Fix a) where
 
 type Algebra f a = f a -> a
 
-cata :: Functor f => (f b -> b) -> Fix f -> b
+cata :: Functor f => Algebra f b -> Fix f -> b
 cata alg = alg . fmap (cata alg) . unFix
 
-fixcata :: Functor f => (f b -> b) -> Fix f -> b
+fixcata :: Functor f => Algebra f b -> Fix f -> b
 fixcata alg = fix $ \f -> alg . fmap f . unFix
 
 type AlgebraM f m a = f a -> m a
