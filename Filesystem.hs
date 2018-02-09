@@ -2,6 +2,9 @@
     PatternSynonyms
   , ViewPatterns
   , GeneralizedNewtypeDeriving
+  , DeriveFunctor
+  , DeriveFoldable
+  , DeriveTraversable
   #-}
 
 module Filesystem where
@@ -11,6 +14,8 @@ import Algebra
 import Data.Coerce
 import Data.Function (fix)
 import Control.Monad (void, join)
+import System.FilePath
+import System.Directory
 
 -- $setup
 -- λ import Control.Monad.Identity (runIdentity)
@@ -112,6 +117,36 @@ fixanaM alg = fix $ \f -> \x -> fmap Fix . traverse f =<< alg x
 -- λ runIdentity (anaM coalg1M (7::Word)) == runIdentity (fixanaM coalg1M (7::Word))
 -- True
 
+browseSimple :: FilePath -> IO (Either FilePath [FilePath])
+browseSimple x = do
+    isAvailable <- doesPathExist x
+    if not isAvailable then error $ "File not found: " ++ x else do
+        isFile <- doesFileExist x
+        if isFile then return $ Left x else do
+            isDirectory <- doesDirectoryExist x
+            if not isDirectory then error $ "Unknown filesystem node: " ++ x else do
+                listing <- listDirectory x
+                return $ Right ((x </>) <$> listing)
+-- ^
+-- λ browseSimple  "."
+-- Right [..."./Filesystem.hs"...]
+
+newtype FS2 a = FS2 (Either String [a]) deriving (Functor, Foldable, Traversable)
+
+instance (Show a) => Show (FS2 a) where
+    show (FS2 (Left s)) = s
+    show (FS2 (Right ss)) = init $ unlines $ show <$> ss
+
+browse :: FilePath -> IO (FS2 String)
+browse x = do
+    isAvailable <- doesPathExist x
+    if not isAvailable then error $ "File not found: " ++ x else do
+        isFile <- doesFileExist x
+        if isFile then return $ FS2 $ Left x else do
+            isDirectory <- doesDirectoryExist x
+            if not isDirectory then error $ "Unknown filesystem node: " ++ x else do
+                listing <- listDirectory x
+                return $ FS2 $ Right ((x </>) <$> listing)
 
 -- exec :: FS () -> IO ()
 -- exec (File s) = putStrLn s
