@@ -18,10 +18,16 @@ alg (Just x) = succ x
 -- λ ana coAlg (7 :: Word)
 -- Just Just Just Just Just Just Just Nothing
 --
--- λ cata alg $ ana coAlg (7 :: Word)
+-- λ cata alg . ana coAlg $ (7 :: Word)
 -- 7
 --
 -- λ runIdentity (anaM (return . coAlg) (7 :: Word)) == ana coAlg (7 :: Word)
+-- True
+--
+-- λ ana coAlg (7 :: Word) == fixana coAlg (7 :: Word)
+-- True
+--
+-- λ (cata alg . ana coAlg) (7 :: Word) == (fixcata alg . ana coAlg) (7 :: Word) 
 -- True
 
 coAlg :: CoAlgebra Maybe Word
@@ -42,7 +48,10 @@ instance NFData (a (Fix a)) => NFData (Fix a) where
 type Algebra f a = f a -> a
 
 cata :: Functor f => (f b -> b) -> Fix f -> b
-cata f = f . fmap (cata f) . unFix
+cata alg = alg . fmap (cata alg) . unFix
+
+fixcata :: Functor f => (f b -> b) -> Fix f -> b
+fixcata alg = fix $ \f -> alg . fmap f . unFix
 
 type AlgebraM f m a = f a -> m a
 
@@ -52,7 +61,10 @@ cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 type CoAlgebra f a = a -> f a
 
 ana :: Functor f => CoAlgebra f a -> a -> Fix f
-ana coalg = fix $ \f -> Fix . fmap f . coalg
+ana coalg = Fix . fmap (ana coalg) . coalg
+
+fixana :: Functor f => CoAlgebra f a -> a -> Fix f
+fixana coalg = fix $ \f -> Fix . fmap f . coalg
 
 type CoAlgebraM f m a = a -> m (f a)
 
