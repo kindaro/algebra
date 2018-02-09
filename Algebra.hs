@@ -1,17 +1,12 @@
 {-# LANGUAGE
     FlexibleInstances
   , UndecidableInstances
-  , PatternSynonyms
-  , ViewPatterns
-  , GeneralizedNewtypeDeriving
   #-}
 
 module Algebra where
 
-import Data.List
 import Control.DeepSeq (NFData, rnf)
-import Control.Monad.Trans.RWS.Strict
-import Data.Coerce
+import Data.Function (fix)
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
@@ -32,3 +27,14 @@ type AlgebraM a f b = a b -> f b
 
 cataM :: (Monad f, Traversable a) => AlgebraM a f b -> Fix a -> f b
 cataM f x = f =<< (traverse (cataM f) . unFix $ x)
+
+ana alg i = Fix . fmap (ana alg) . alg $ i
+
+fixana alg = fix $ \f -> Fix . fmap f . alg
+
+type CoAlgebraM a f b = b -> a (f b)
+
+anaM :: (Traversable base, Monad m) => CoAlgebraM m base i -> i -> m (Fix base)
+anaM alg i = fmap Fix . traverse (anaM alg) =<< (alg i)
+
+fixanaM alg = fix $ \f -> \x -> fmap Fix . traverse f =<< alg x
