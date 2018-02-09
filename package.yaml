@@ -18,6 +18,7 @@ library:
   exposed-modules:
       - Algebra
       - Algebra2
+      - Expr
       - Filesystem
   other-modules: []
 
