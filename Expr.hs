@@ -1,35 +1,22 @@
 {-# LANGUAGE
-    FlexibleInstances
-  , UndecidableInstances
-  , PatternSynonyms
+    PatternSynonyms
   , ViewPatterns
   , GeneralizedNewtypeDeriving
+  , DeriveFunctor
+  , DeriveFoldable
+  , DeriveTraversable
   #-}
 
 module Expr where
 
--- TODO: Automagically derive instances of Functor, Foldable, Traversable?
 import Data.List
-import Control.DeepSeq (NFData, rnf)
 import Control.Monad.Trans.RWS.Strict
 import Data.Coerce
 
 import Algebra
 
-data Expr a = Branch [a] | Leaf !Int | Bud !String deriving (Eq, Show)
-
-instance Functor Expr where
-    fmap f (Branch xs) = Branch (fmap f xs)
-    fmap _ (Leaf   i ) = Leaf    i
-    fmap _ (Bud    s ) = Bud     s
-
-instance Foldable Expr where
-    foldMap = undefined
-
-instance Traversable Expr where
-    traverse f (Branch xs) = fmap Branch $ traverse f xs
-    traverse _ (Leaf   i ) = pure $ Leaf i
-    traverse _ (Bud    s ) = pure $ Bud  s
+data Expr a = Branch [a] | Leaf !Int | Bud !String
+    deriving (Eq, Show, Functor, Foldable, Traversable)
 
 type F = Fix Expr
 
