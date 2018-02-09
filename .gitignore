@@ -1,2 +1,6 @@
 *.cabal
 .stack-work
+.cabal-sandbox
+cabal.sandbox.config
+dist-newstyle
+dist
