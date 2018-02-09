@@ -8,6 +8,9 @@ module Algebra where
 import Control.DeepSeq (NFData, rnf)
 import Data.Function (fix)
 
+-- $setup
+-- λ import Control.Monad.Identity (runIdentity)
+
 alg :: Algebra Maybe Word
 alg Nothing = 0
 alg (Just x) = succ x
@@ -17,6 +20,9 @@ alg (Just x) = succ x
 --
 -- λ cata alg $ ana coAlg (7 :: Word)
 -- 7
+--
+-- λ runIdentity (anaM (return . coAlg) (7 :: Word)) == ana coAlg (7 :: Word)
+-- True
 
 coAlg :: CoAlgebra Maybe Word
 coAlg 0 = Nothing
