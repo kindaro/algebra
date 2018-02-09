@@ -28,7 +28,7 @@ type AlgebraM a f b = a b -> f b
 cataM :: (Monad f, Traversable a) => AlgebraM a f b -> Fix a -> f b
 cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 
-ana alg i = Fix . fmap (ana alg) . alg $ i
+ana alg = Fix . fmap (ana alg) . alg
 
 fixana alg = fix $ \f -> Fix . fmap f . alg
 
