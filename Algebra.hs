@@ -8,6 +8,20 @@ module Algebra where
 import Control.DeepSeq (NFData, rnf)
 import Data.Function (fix)
 
+alg :: Algebra Maybe Word
+alg Nothing = 0
+alg (Just x) = succ x
+-- ^
+-- λ ana coAlg (7 :: Word)
+-- Just Just Just Just Just Just Just Nothing
+--
+-- λ cata alg $ ana coAlg (7 :: Word)
+-- 7
+
+coAlg :: CoAlgebra Maybe Word
+coAlg 0 = Nothing
+coAlg x = Just (pred x)
+
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
 instance Show (a (Fix a)) => Show (Fix a) where
