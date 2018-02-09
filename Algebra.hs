@@ -19,22 +19,22 @@ instance Eq (a (Fix a)) => Eq (Fix a) where
 instance NFData (a (Fix a)) => NFData (Fix a) where
     rnf (Fix x) = rnf x
 
+type Algebra f a = f a -> a
 
 cata :: Functor f => (f b -> b) -> Fix f -> b
 cata f = f . fmap (cata f) . unFix
 
-type AlgebraM a f b = a b -> f b
+type AlgebraM f m a = f a -> m a
 
-cataM :: (Monad f, Traversable a) => AlgebraM a f b -> Fix a -> f b
+cataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
 cataM f x = f =<< (traverse (cataM f) . unFix $ x)
 
-ana alg i = Fix . fmap (ana alg) . alg $ i
+type CoAlgebra f a = a -> f a
 
-fixana alg = fix $ \f -> Fix . fmap f . alg
+ana :: Functor f => CoAlgebra f a -> a -> Fix f
+ana coalg = fix $ \f -> Fix . fmap f . coalg
 
-type CoAlgebraM a f b = b -> a (f b)
+type CoAlgebraM f m a = a -> m (f a)
 
-anaM :: (Traversable base, Monad m) => CoAlgebraM m base i -> i -> m (Fix base)
-anaM alg i = fmap Fix . traverse (anaM alg) =<< (alg i)
-
-fixanaM alg = fix $ \f -> \x -> fmap Fix . traverse f =<< alg x
+anaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
+anaM coalg = fix $ \f x -> fmap Fix . traverse f =<< coalg x

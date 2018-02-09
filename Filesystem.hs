@@ -24,10 +24,10 @@ coalg1 x = Just (pred x)
 -- λ ana coalg1 (7::Word)
 -- Just Just Just Just Just Just Just Nothing
 
-finalCoAlgM :: (Monad m) => CoAlgebraM m a (Fix a)
+finalCoAlgM :: (Monad m) => CoAlgebraM f m (Fix f)
 finalCoAlgM = return . unFix
 
-coalg1M :: (Enum b, Bounded b, Eq b, Monad a) => CoAlgebraM a Maybe b
+coalg1M :: (Enum a, Bounded a, Eq a, Monad m) => CoAlgebraM Maybe m a
 coalg1M ((== minBound) -> True) = return Nothing
 coalg1M x = return $ Just (pred x)
 -- ^
