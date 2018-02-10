@@ -47,26 +47,26 @@ instance NFData (a (Fix a)) => NFData (Fix a) where
 
 type Algebra f a = f a -> a
 
+type AlgebraM f m a = f a -> m a
+
+type CoAlgebra f a = a -> f a
+
+type CoAlgebraM f m a = a -> m (f a)
+
 cata :: Functor f => Algebra f b -> Fix f -> b
 cata alg = alg . fmap (cata alg) . unFix
 
 fixcata :: Functor f => Algebra f b -> Fix f -> b
 fixcata alg = fix $ \f -> alg . fmap f . unFix
 
-type AlgebraM f m a = f a -> m a
-
 cataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
 cataM alg x = alg =<< (traverse (cataM alg) . unFix $ x)
-
-type CoAlgebra f a = a -> f a
 
 ana :: Functor f => CoAlgebra f a -> a -> Fix f
 ana coAlg = Fix . fmap (ana coAlg) . coAlg
 
 fixana :: Functor f => CoAlgebra f a -> a -> Fix f
 fixana coAlg = fix $ \f -> Fix . fmap f . coAlg
-
-type CoAlgebraM f m a = a -> m (f a)
 
 anaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
 anaM coAlg = fix $ \f x -> fmap Fix . traverse f =<< coAlg x
