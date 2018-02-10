@@ -56,17 +56,17 @@ fixcata alg = fix $ \f -> alg . fmap f . unFix
 type AlgebraM f m a = f a -> m a
 
 cataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
-cataM f x = f =<< (traverse (cataM f) . unFix $ x)
+cataM alg x = alg =<< (traverse (cataM alg) . unFix $ x)
 
 type CoAlgebra f a = a -> f a
 
 ana :: Functor f => CoAlgebra f a -> a -> Fix f
-ana coalg = Fix . fmap (ana coalg) . coalg
+ana coAlg = Fix . fmap (ana coAlg) . coAlg
 
 fixana :: Functor f => CoAlgebra f a -> a -> Fix f
-fixana coalg = fix $ \f -> Fix . fmap f . coalg
+fixana coAlg = fix $ \f -> Fix . fmap f . coAlg
 
 type CoAlgebraM f m a = a -> m (f a)
 
 anaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
-anaM coalg = fix $ \f x -> fmap Fix . traverse f =<< coalg x
+anaM coAlg = fix $ \f x -> fmap Fix . traverse f =<< coAlg x
