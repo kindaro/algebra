@@ -4,6 +4,7 @@ module Main where
 import Criterion
 import Criterion.Main
 import Criterion.Measurement 
+import Control.Monad.Identity
 
 import Algebra
 
@@ -15,14 +16,32 @@ shortEnv, longEnv :: Fix Maybe
 shortEnv = ana coAlg smallWord
 longEnv = ana coAlg largeWord
 
-benchCata = nf (cata alg)
-benchFixcata = nf (fixcata alg)
+shortEnvM, longEnvM :: Monad m => m (Fix Maybe)
+shortEnvM = anaM (return . coAlg) smallWord
+longEnvM = anaM (return . coAlg) largeWord
 
-benchAna = nf (ana coAlg)
-benchFixana = nf (fixana coAlg)
+c = cata alg
+fc = fixcata alg
+cM = cataM ((return :: a -> Identity a) . alg)
+fcM = fixcataM ((return :: a -> Identity a) . alg)
 
-longBenchAna = nf (ana coAlg)
-longBenchFixana = nf (fixana coAlg)
+a = ana coAlg
+fa = fixana coAlg
+aM = anaM ((return :: a -> Identity a) . coAlg)
+faM = fixanaM ((return :: a -> Identity a) . coAlg)
+
+benchCata = nf c
+benchFixcata = nf fc
+
+benchCataM = nf cM
+benchFixcataM = nf fcM
+
+benchAna = nf a
+benchFixana = nf fa
+
+
+benchAnaM = nf aM
+benchFixanaM = nf faM
 
 main = defaultMain
     [ bgroup "cata"
@@ -41,8 +60,28 @@ main = defaultMain
             , bench "fixana" $ benchFixana smallWord
             ]
         , bgroup "large word"
-            [ bench "ana" $ longBenchAna largeWord
-            , bench "fixana" $ longBenchFixana largeWord
+            [ bench "ana" $ benchAna largeWord
+            , bench "fixana" $ benchFixana largeWord
+            ]
+        ]
+    , bgroup "cataM"
+        [ bgroup "short input"
+            [ env (return shortEnv) $ \x -> bench "cataM"    (benchCata x)
+            , env (return shortEnv) $ \x -> bench "fixcataM" (benchFixcata x)
+            ]
+        , bgroup "long input"
+            [ env (return longEnv) $ \x -> bench "cataM"    (benchCata x)
+            , env (return longEnv) $ \x -> bench "fixcataM" (benchFixcata x)
+            ]
+        ]
+    , bgroup "anaM"
+        [ bgroup "small word"
+            [ bench "anaM" $ benchAnaM smallWord
+            , bench "fixanaM" $ benchFixanaM smallWord
+            ]
+        , bgroup "large word"
+            [ bench "anaM" $ benchAnaM largeWord
+            , bench "fixanaM" $ benchFixanaM largeWord
             ]
         ]
     ]

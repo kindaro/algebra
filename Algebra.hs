@@ -36,6 +36,9 @@ coAlg x = Just (pred x)
 
 newtype Fix a = Fix { unFix :: a (Fix a) }
 
+naiveFix :: (a -> a) -> a
+naiveFix f = f (naiveFix f)
+
 instance Show (a (Fix a)) => Show (Fix a) where
     show (Fix x) = show x
 
@@ -62,6 +65,9 @@ fixcata alg = fix $ \f -> alg . fmap f . unFix
 cataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
 cataM alg x = alg =<< (traverse (cataM alg) . unFix $ x)
 
+fixcataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
+fixcataM alg = fix $ \f x -> alg =<< (traverse f . unFix $ x)
+
 ana :: Functor f => CoAlgebra f a -> a -> Fix f
 ana coAlg = Fix . fmap (ana coAlg) . coAlg
 
@@ -69,4 +75,23 @@ fixana :: Functor f => CoAlgebra f a -> a -> Fix f
 fixana coAlg = fix $ \f -> Fix . fmap f . coAlg
 
 anaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
-anaM coAlg = fix $ \f x -> fmap Fix . traverse f =<< coAlg x
+anaM coAlg x = fmap Fix . traverse (anaM coAlg) =<< coAlg x
+
+fixanaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
+fixanaM coAlg = fix $ \f x -> fmap Fix . traverse f =<< coAlg x
+
+-----
+
+naiveFixcata :: Functor f => Algebra f b -> Fix f -> b
+naiveFixcata alg = naiveFix $ \f -> alg . fmap f . unFix
+
+naiveFixcataM :: (Monad m, Traversable f) => AlgebraM f m a -> Fix f -> m a
+naiveFixcataM alg = naiveFix $ \f x -> alg =<< (traverse f . unFix $ x)
+
+naiveFixana :: Functor f => CoAlgebra f a -> a -> Fix f
+naiveFixana coAlg = naiveFix $ \f -> Fix . fmap f . coAlg
+
+naiveFixanaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
+naiveFixanaM coAlg = naiveFix $ \f x -> fmap Fix . traverse f =<< coAlg x
+
+
