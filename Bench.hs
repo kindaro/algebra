@@ -2,6 +2,8 @@
     DuplicateRecordFields
   , RecordWildCards
   , OverloadedStrings
+  , ExistentialQuantification
+  , RankNTypes
   #-}
 
 module Main where
@@ -39,16 +41,22 @@ envs = ana coAlg <$> sizes
 envsM :: [Identity (Fix Maybe)]
 envsM = anaM coAlgM <$> sizes
 
--- | result best be NFData, measure a field of Measure.
+-- | TODO: Rather, here should be a collection of lists of predictors. For example, I may want to
+--         have more than one parameter to the function under scrutiny: at hand, I may parametrize
+--         cata with both an algebra and a structure. Though, as algebras may go in different
+--         types, a simple cartesian product is unfit... But with one contrived algebra my testing
+--         is incomplete and insufficient. At hand, I have at the least the pure and the monadic
+--         one, that require different types of argument, but represent, sort of, the same
+--         algorithm. I would rather see fewer larger groups. Some sort of a sum of cartesian
+--         products.
 data RoutineGroup parameter result = RoutineGroup
     { _name :: Text
     , _etalon :: parameter -> result
-    , _useEnv :: Bool
+    , _useEnv :: Bool  -- ^ TODO: Can I default this to true?
     , _variants :: [(Text, parameter -> result)]
     , _parameters :: Either [parameter] [(Text, parameter)]
     }
 
--- | After running it, we shall obtain:
 data RoutineStats = RoutineStats
     { _name :: Text
     , _grounds :: [SampleAnalysis]
@@ -59,15 +67,12 @@ data RoutineStats = RoutineStats
 data NormalizedRoutineStats = NormalizedRoutineStats
     { _name :: Text
     , _variations :: [[DataPoint]]
-    }
+    } deriving Show
 
 data DataPoint = DataPoint { _name :: Text
                            , _mean :: Either Double Double
                            , _variance :: Double
                            } deriving (Show, Eq, Ord)
-
--- Then we will normalize it with order of speedup = lg D - lg d if D - d positive, or order of
--- slowdown = lg d - lg D if D - d negative.
 
 sequence2 :: (Traversable s, Traversable t, Monad m) => t (s (m a)) -> m (t (s a))
 sequence2 = sequence . fmap sequence
@@ -140,17 +145,36 @@ normalizeRoutineStats RoutineStats { .. } =
 
     normalizeDeviation gdev sdev = sdev / gdev
 
-c = cata alg
-fc = fixcata alg
-cM = cataM algM
-fcM = fixcataM algM
+benches :: [RoutineGroup (Fix Maybe) Word]
+benches =
+    [ RoutineGroup { _name = "cata"
+                   , _etalon = cata alg
+                   , _useEnv = True
+                   , _variants = [ ("fixed", fixcata alg) ]
+                   , _parameters = Right $ zip ["small", "large"] envs
+                   }
+    -- , RoutineGroup { _name = "cataM"
+    --                , _etalon = cataM algM
+    --                , _useEnv = True
+    --                , _variants = [ ("fixed monadic", fixcataM algM) ]
+    --                , _parameters = Right $ zip ["small", "large"] envsM
+    --                }
+    -- , RoutineGroup { _name = "ana"
+    --                , _etalon = ana coAlg
+    --                , _useEnv = False
+    --                , _variants = [ ("fixed", fixana coAlg) ]
+    --                , _parameters = Right $ zip ["small", "large"] sizes
+    --                }
+    -- , RoutineGroup { _name = "anaM"
+    --                , _etalon = anaM coAlgM
+    --                , _useEnv = False
+    --                , _variants = [ ("fixed monadic", fixanaM coAlgM) ]
+    --                , _parameters = Right $ zip ["small", "large"] sizes
+    --                }
+    ]
 
-a = ana coAlg
-fa = fixana coAlg
-aM = anaM coAlgM
-faM = fixanaM coAlgM
-
-main = undefined
+main = do  -- Run the benches, collect data points and make a diagram.
+    print =<< normalizeRoutineStats <$> runShowableRoutineGroup (head benches)
 
 -- main = defaultMain
 --     [ bgroup "cata"
