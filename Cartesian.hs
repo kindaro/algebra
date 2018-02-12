@@ -1,6 +1,9 @@
 {-# LANGUAGE
     RecordWildCards
   , OverloadedStrings
+  , DeriveFunctor
+  , DeriveFoldable
+  , DeriveTraversable
   #-}
 
 module Cartesian where
@@ -10,6 +13,15 @@ import Data.Text (Text)
 -- import qualified Data.Text as T
 -- import qualified Data.Text.IO as Tio
 import Data.Array
+
+-- | I believe we will eventually have an automagic Traversable => Gluable... but maybe not. In
+--   the meantime, this will serve.
+class Gluable f where
+    glue :: (a -> b -> c) -> f a -> f b -> f c
+
+-- | This instance is the obvious replica of zip.
+instance Gluable [] where
+    glue = zipWith
 
 type A e = Array Int e
 
@@ -21,13 +33,37 @@ data Cartesian v = Cartesian  -- In the initial cartesian, `v` would be a tuple.
                                           --   hyperinterval.
     , _labels :: [Maybe Text]
     , _values :: A v
-    } deriving (Show, Eq, Ord)
+    } deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+instance Gluable Cartesian where
+    glue f x y | _dimensions x == _dimensions y && _labels x == _labels y
+                    = Cartesian
+                        { _dimensions = _dimensions x
+                        , _labels = _labels x
+                        , _values = arr $ zipWith f (unarr $ _values x) (unarr $ _values y)
+                        }
+               | otherwise = error $ "So far, gluable instance for \
+                    \incomplete spaces is not defined."
+
+-- ^ An example of gluing and an fmap:
+--
+-- λ :{
+--     let m  = (appendWith (,) (uni [1..3]) (uni ['a'..'c']))
+--         m' = (appendWith (,) (uni [7..9]) (uni ['E'..'G']))
+--     unarr . _values $ fmap (\(x, y) -> [snd x, snd y]) $ glue (,) m m'
+--   :}
+-- ["aE","bF","cG","aE","bF","cG","aE","bF","cG"]
+
 
 -- | This is only a monoidal empty if we use a smart constructor that detects it and applies the
 --   necessary isomorphism. Such a smart constructor would only be useable with the initial
 --   Cartesian, which we cannot define without advanced type level trickery.
 empty :: Cartesian v
 empty = Cartesian [1] [Nothing] (arr [undefined])
+
+-- | Convert n-dimensional Cartesian to n inlayed lists.
+--   This is actually doable with a Fix, but I will leave unimplemented for now.
+-- toLists
 
 -- | Get elements of an array such that they all belong to a congruence class c modulo n.
 getByCongruentIndices :: Int -> Int -> A v -> [v]
