@@ -9,9 +9,6 @@
 module Cartesian where
 
 import Prelude hiding ()
-import Data.Text (Text)
--- import qualified Data.Text as T
--- import qualified Data.Text.IO as Tio
 import Data.Array
 
 -- | I believe we will eventually have an automagic Traversable => Gluable... but maybe not. In
@@ -31,15 +28,13 @@ type A e = Array Int e
 data Cartesian v = Cartesian  -- In the initial cartesian, `v` would be a tuple.
     { _dimensions :: [Int]  -- ^ The head of the list is the header of the
                                           --   hyperinterval.
-    , _labels :: [Maybe Text]
     , _values :: A v
     } deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 instance Gluable Cartesian where
-    glue f x y | _dimensions x == _dimensions y && _labels x == _labels y
+    glue f x y | _dimensions x == _dimensions y
                     = Cartesian
                         { _dimensions = _dimensions x
-                        , _labels = _labels x
                         , _values = arr $ zipWith f (unarr $ _values x) (unarr $ _values y)
                         }
                | otherwise = error $ "So far, gluable instance for \
@@ -59,7 +54,7 @@ instance Gluable Cartesian where
 --   necessary isomorphism. Such a smart constructor would only be useable with the initial
 --   Cartesian, which we cannot define without advanced type level trickery.
 empty :: Cartesian v
-empty = Cartesian [1] [Nothing] (arr [undefined])
+empty = Cartesian [1] (arr [undefined])
 
 -- | Convert n-dimensional Cartesian to n inlayed lists.
 --   This is actually doable with a Fix, but I will leave unimplemented for now.
@@ -94,11 +89,7 @@ card Cartesian{..} = product _dimensions
 -- λ unarr . _values $ uni [3,2,1]
 -- [3,2,1]
 uni :: [v] -> Cartesian v
-uni vs = Cartesian { _dimensions = [length vs], _labels = [Nothing], _values = arr vs }
-
--- | Consruct a tagged uni-dimensional Cartesian.
-uniTagged :: Text -> [v] -> Cartesian v
-uniTagged tag vs = Cartesian { _dimensions = [length vs], _labels = [Just tag], _values = arr vs }
+uni vs = Cartesian { _dimensions = [length vs], _values = arr vs }
 
 -- | Dimension increment.
 --
@@ -106,7 +97,6 @@ uniTagged tag vs = Cartesian { _dimensions = [length vs], _labels = [Just tag], 
 -- [('a',1),('a',2),('a',3),('b',1),('b',2),('b',3),('c',1),('c',2),('c',3)]
 cons :: (u -> v -> w) -> [u] -> Cartesian v -> Cartesian w
 cons f xs Cartesian{..} = Cartesian { _dimensions = length xs: _dimensions
-                                    , _labels = Nothing: _labels
                                     , _values = arr [ x `f` y | x <- xs, y <- unarr _values ] }
 
 -- | Paramerised dimension increment.
@@ -116,10 +106,10 @@ inject = undefined
 -- | Dimensional decrement.
 uncons :: (u -> (v, w)) -> Cartesian u -> Maybe ([v], Cartesian w)
 uncons _ Cartesian { _dimensions = [] } = Nothing
-uncons f Cartesian { _dimensions = (_: ds), _labels = labels, _values = xs } = -- View patterns?
+uncons f Cartesian { _dimensions = (_: ds), _values = xs } = -- View patterns?
     let ys = fmap (fst . f) . congr0 (product ds) $ xs
         zs = fmap (snd . f) . take (product ds) . unarr $ xs
-    in  Just (ys, Cartesian { _dimensions = ds, _labels = tail labels, _values = arr zs })
+    in  Just (ys, Cartesian { _dimensions = ds, _values = arr zs })
 
 -- | Parametrized dimensional decrement.
 --   Example:
@@ -138,7 +128,6 @@ type BitField = Word
 -- [(1,'a'),(1,'b'),(1,'c'),(2,'a'),(2,'b'),(2,'c'),(3,'a'),(3,'b'),(3,'c')]
 appendWith :: (u -> v -> w) -> Cartesian u -> Cartesian v -> Cartesian w
 appendWith f x y = Cartesian { _dimensions = _dimensions x ++ _dimensions y
-                             , _labels = _labels x ++ _labels y
                              , _values = arr [ x `f` y | x <- unarr (_values x), y <- unarr (_values y) ]
                              }
 
@@ -161,9 +150,7 @@ appendWith f x y = Cartesian { _dimensions = _dimensions x ++ _dimensions y
 Cartesian{..} ↑ i =
     let d  = product . drop i $ _dimensions
         ds = take i _dimensions ++ drop (succ i) _dimensions  -- Delete the i-th.
-        ls = take i _labels ++ drop (succ i) _labels  -- Delete the i-th.
     in  Cartesian
             { _dimensions = ds
-            , _labels = ls
             , _values = arr . concat $ ($ _values) <$> (congr d <$> [0..pred d])
             }
