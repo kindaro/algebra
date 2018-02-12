@@ -35,6 +35,8 @@ benchmarks:
         main: Bench.hs
         dependencies:
             - criterion
+            - text
+            - statistics
         ghc-options: -O2 -w
         other-modules:
             - Algebra
