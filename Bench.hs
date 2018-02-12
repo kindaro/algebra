@@ -137,9 +137,9 @@ normalizeRoutineStats RoutineStats { .. } =
                                  , anStdDev = Estimate { estPoint = sdev  } }
                   = DataPoint name (normalizeMean gmean smean) (normalizeDeviation gdev sdev)
 
-    normalizeMean gmean smean | gmean < smean = Right $ logBase 2 (smean / gmean)
+    normalizeMean gmean smean | gmean > smean = Right $ logBase 2 (gmean / smean)
                                 -- ^ The variant is faster than the base. This is right!
-                              | gmean > smean = Left  $ logBase 2 (gmean / smean)
+                              | gmean < smean = Left  $ logBase 2 (smean / gmean)
                                 -- ^ The variant is slower than the base. This is wrong...
                               | gmean == smean = Right 1.0
 
