@@ -16,6 +16,7 @@ import Control.Monad.Identity
 import Data.Monoid
 import Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
+import qualified Data.Text.IO as Tio
 
 import Criterion
 import Criterion.Main
@@ -24,6 +25,7 @@ import Criterion.Internal
 import Criterion.Types
 import Criterion.Monad
 import Criterion.Main.Options (defaultConfig)
+import Criterion.IO.Printf
 
 import Statistics.Types
 
@@ -60,8 +62,7 @@ data RoutineGroup parameter result = RoutineGroup
 data RoutineStats = RoutineStats
     { _name :: Text
     , _grounds :: [SampleAnalysis]
-    , _labels :: [[Text]]
-    , _variations :: [[SampleAnalysis]]
+    , _variations :: [[(Text, SampleAnalysis)]]
     }
 
 data NormalizedRoutineStats = NormalizedRoutineStats
@@ -86,10 +87,10 @@ zipWith2 f = zipWith (zipWith f)
 zipWith23 :: (a -> b -> c -> d) -> [[a]] -> [[b]] -> [[c]] -> [[d]]
 zipWith23 f = zipWith3 (zipWith3 f)
 
-runSingleBench :: Benchmarkable -> IO SampleAnalysis
-runSingleBench mark = fmap extractAnalysis
+runSingleBench :: Text -> Benchmarkable -> IO SampleAnalysis
+runSingleBench name mark = fmap extractAnalysis
                     $ withConfig defaultConfig
-                    $ runAndAnalyseOne errNumber errName mark
+                    $ note "Benchmarking %s\n" (unpack name) >> runAndAnalyseOne errNumber errName mark
 
   where errNumber = error "This benchmarkable is not numbered."
         errName   = error "This benchmarkable is not named."
@@ -110,22 +111,23 @@ runShowableRoutineGroup RoutineGroup { .. } = do
         then sequence2 . fmap2 (evaluate . force) $ normalizedParameters
         else return normalizedParameters
 
-    let masterBench = nf _etalon <$> (snd <$> parameters)
-    masterReport <- sequence . fmap runSingleBench $ masterBench
+    let masterBench = (("etalon $ " <>) *** nf _etalon)  <$> parameters
+    masterReport <- sequence . fmap (uncurry runSingleBench) $ masterBench
 
-    let benchmarks = [ [ nf f x | f <- snd <$> _variants ] | x <- snd <$> parameters ]
-        labels     = [ [ p <> n | n <- fst <$> _variants ] | p <- fst <$> parameters ]
+    let benchmarks = [ [ (fst v <> " $ " <> fst p, snd v `nf` snd p)
+                       | v <- _variants ] | p <- parameters ]
             -- Every sublist here corresponds to a single entry in masterBench, with parameter as
             -- key. If you imagine the sublists as lines, then this is a matrix and the
             -- masterBench is a column vector.
-    reports <- sequence2 . fmap2 runSingleBench $ benchmarks
+    reports <- sequence2 . fmap2 (\x -> sequence (fst x, fst x `runSingleBench` snd x)) $ benchmarks
 
-    return $ RoutineStats _name masterReport labels reports
+    return $ RoutineStats _name masterReport reports
 
 normalizeRoutineStats :: RoutineStats -> NormalizedRoutineStats
 normalizeRoutineStats RoutineStats { .. } = 
-    let normalizedVariations = zipWith23 sampleToPoint _labels (repeat <$> _grounds) _variations
-        labelledVariations = undefined
+    let normalizedVariations = zipWith23 sampleToPoint labels (repeat <$> _grounds) analyses
+        labels = fmap2 fst _variations
+        analyses = fmap2 snd _variations
     in NormalizedRoutineStats _name normalizedVariations
 
   where
@@ -144,6 +146,15 @@ normalizeRoutineStats RoutineStats { .. } =
                               | gmean == smean = Right 1.0
 
     normalizeDeviation gdev sdev = sdev / gdev
+
+printStats NormalizedRoutineStats { .. } = do
+    Tio.putStrLn $ "Benchmark: " <> _name
+    void . sequence2 . fmap2 printDataPoint $ _variations
+
+printDataPoint DataPoint { .. } = do
+    Tio.putStrLn $ "Datapoint: " <> _name
+    putStrLn . show $ _mean
+    putStrLn . show $ _variance
 
 benches :: [RoutineGroup (Fix Maybe) Word]
 benches =
@@ -174,7 +185,7 @@ benches =
     ]
 
 main = do  -- Run the benches, collect data points and make a diagram.
-    print =<< normalizeRoutineStats <$> runShowableRoutineGroup (head benches)
+    printStats =<< normalizeRoutineStats <$> runShowableRoutineGroup (head benches)
 
 -- main = defaultMain
 --     [ bgroup "cata"
