@@ -19,6 +19,7 @@ library:
       - Algebra2
       - Expr
       - Filesystem
+      - Zip
   other-modules: []
 
 tests:
