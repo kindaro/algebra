@@ -39,5 +39,5 @@ coAlgebra2 :: CoAlgebra (Chain Int) Int
 coAlgebra2 7 = End
 coAlgebra2 x = Link x (pred x)
 
-zip :: Fix (Chain i) -> Fix (Chain i) -> Fix (Chain i)
-zip = undefined
+zip' :: Fix (Chain i) -> Fix (Chain i) -> Fix (Chain i)
+zip' = undefined
