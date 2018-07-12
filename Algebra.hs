@@ -123,4 +123,5 @@ instance (Functor f, Functor g) => Functor (Compose f g)
 
 newtype Fix2 f g = Fix2 { unFix2 :: g (f (Fix2 f g)) }
 
+cata2 :: (Functor f, Functor g) => (g (f x) -> x) -> Fix2 f g -> x
 cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
