@@ -6,6 +6,7 @@
   , GADTs
   , DataKinds
   , KindSignatures
+  , TypeOperators
   , StandaloneDeriving
   #-}
 
@@ -142,11 +143,22 @@ cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
 -- Fix of arbitrary arity:
 -- -----------------------
 
+-- |
+-- λ Fixes (Just (Fixes Nothing)) :: Fixes '[Maybe]
+-- Fixes {unFixes = Just (Fixes {unFixes = Nothing})}
+
 newtype Fixes (xs :: [* -> *]) = Fixes {unFixes :: UnFixes xs}
+
+deriving instance Show (UnFixes xs) => Show (Fixes xs)
 
 type family UnFixes (xs :: [* -> *]) :: *
   where
-    UnFixes '[f] = f (Fixes '[f])
+    UnFixes xs = Functors xs (Fixes xs)
+
+type family Functors (xs :: [* -> *]) (i :: *) :: *
+  where
+    Functors '[ ] i = i
+    Functors (x ': xs) i = Functors xs (x i)
 
 cataN :: (UnFixes xs -> a) -> Fixes xs -> a
 cataN alg = fix $ \f -> alg . undefined f . unFixes
