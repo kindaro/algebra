@@ -1,6 +1,11 @@
 {-# LANGUAGE
     FlexibleInstances
   , UndecidableInstances
+  , TypeFamilies
+  , RankNTypes
+  , GADTs
+  , DataKinds
+  , KindSignatures
   #-}
 
 module Algebra where
@@ -10,6 +15,7 @@ import Data.Function (fix)
 
 -- $setup
 -- λ import Control.Monad.Identity (runIdentity)
+-- λ :set -XDataKinds
 
 alg :: Algebra Maybe Word
 alg Nothing = 0
@@ -125,3 +131,20 @@ newtype Fix2 f g = Fix2 { unFix2 :: g (f (Fix2 f g)) }
 
 cata2 :: (Functor f, Functor g) => (g (f x) -> x) -> Fix2 f g -> x
 cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
+
+-- Fix of arbitrary arity:
+-- -----------------------
+
+newtype Fixes (xs :: [* -> *]) = Fixes {unFixes :: UnFixes xs}
+
+type family UnFixes (xs :: [* -> *]) :: *
+  where
+    UnFixes '[f] = f (Fixes '[f])
+
+cataN :: (UnFixes xs -> a) -> Fixes xs -> a
+cataN alg = fix $ \f -> alg . undefined f . unFixes
+
+-- |
+-- λ :type fmap id :: UnFixes '[Maybe] -> UnFixes '[Maybe]
+-- fmap id :: UnFixes '[Maybe] -> UnFixes '[Maybe]
+--   :: Maybe (Fixes '[Maybe]) -> Maybe (Fixes '[Maybe])
