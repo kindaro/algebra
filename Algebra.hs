@@ -112,3 +112,15 @@ newtype Compose f g x = Compose { unCompose :: g (f x) } deriving Show
 instance (Functor f, Functor g) => Functor (Compose f g)
   where
     fmap f = Compose . (fmap . fmap) f . unCompose
+
+-- Binary type level fix:
+-- ----------------------
+
+-- |
+-- λ g Nothing = 0; g (Just (x, y)) = x + y
+-- λ cata2 g $ Fix2 (Just (1, Fix2 (Just (2, Fix2 Nothing))))
+-- 3
+
+newtype Fix2 f g = Fix2 { unFix2 :: g (f (Fix2 f g)) }
+
+cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
