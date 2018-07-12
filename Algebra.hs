@@ -99,4 +99,16 @@ naiveFixana coAlg = naiveFix $ \f -> Fix . fmap f . coAlg
 naiveFixanaM :: (Traversable f, Monad m) => CoAlgebraM f m a -> a -> m (Fix f)
 naiveFixanaM coAlg = naiveFix $ \f x -> fmap Fix . traverse f =<< coAlg x
 
+-- Functor composition:
+-- --------------------
 
+-- |
+-- λ f x = if x > 0 then Compose (Just (x, pred x)) else Compose Nothing
+-- λ ana f 2
+-- Compose {unCompose = Just (2,Compose {unCompose = Just (1,Compose {unCompose = Nothing})})}
+
+newtype Compose f g x = Compose { unCompose :: g (f x) } deriving Show
+
+instance (Functor f, Functor g) => Functor (Compose f g)
+  where
+    fmap f = Compose . (fmap . fmap) f . unCompose
