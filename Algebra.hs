@@ -6,6 +6,7 @@
   , GADTs
   , DataKinds
   , KindSignatures
+  , StandaloneDeriving
   #-}
 
 module Algebra where
@@ -128,6 +129,12 @@ instance (Functor f, Functor g) => Functor (Compose f g)
 -- 3
 
 newtype Fix2 f g = Fix2 { unFix2 :: g (f (Fix2 f g)) }
+
+-- |
+-- λ Fix2 (Just (1, Fix2 (Just (2, Fix2 Nothing))))
+-- Fix2 {unFix2 = Just (1,Fix2 {unFix2 = Just (2,Fix2 {unFix2 = Nothing})})}
+
+deriving instance Show (g (f (Fix2 f g))) => Show (Fix2 f g)
 
 cata2 :: (Functor f, Functor g) => (g (f x) -> x) -> Fix2 f g -> x
 cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
