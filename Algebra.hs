@@ -39,6 +39,12 @@ newtype Fix a = Fix { unFix :: a (Fix a) }
 naiveFix :: (a -> a) -> a
 naiveFix f = f (naiveFix f)
 
+efficientFix :: (a -> a) -> a
+efficientFix f = let x = f x in x
+
+efficientFixWithWhere :: (a -> a) -> a
+efficientFixWithWhere f = x where x = f x
+
 instance Show (a (Fix a)) => Show (Fix a) where
     show (Fix x) = show x
 
