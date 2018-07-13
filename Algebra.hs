@@ -8,6 +8,7 @@
   , KindSignatures
   , TypeOperators
   , StandaloneDeriving
+  , FlexibleContexts
   #-}
 
 module Algebra where
@@ -144,8 +145,11 @@ cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
 -- -----------------------
 
 -- |
--- λ Fixes (Just (Fixes Nothing)) :: Fixes '[Maybe]
--- Fixes {unFixes = Just (Fixes {unFixes = Nothing})}
+-- λ :t Fixes (FS (Just (FS ('a', FZ (Fixes (FS Nothing))))))
+-- Fixes (FS (Just (FS ('a', FZ (Fixes (FS Nothing))))))
+--   :: Fixes '[Maybe, (,) Char]
+-- λ Fixes (FS (Just (FS ('a', FZ (Fixes (FS Nothing))))))
+-- Fixes {unFixes = FS (Just (FS ('a',FZ (Fixes {unFixes = FS Nothing}))))}
 
 newtype Fixes (xs :: [* -> *]) = Fixes {unFixes :: UnFixes xs}
 
@@ -153,17 +157,33 @@ deriving instance Show (UnFixes xs) => Show (Fixes xs)
 
 type family UnFixes (xs :: [* -> *]) :: *
   where
+    UnFixes '[ ] = Functors '[ ] (Fixes '[ ])
     UnFixes xs = Functors xs (Fixes xs)
 
-type family Functors (xs :: [* -> *]) (i :: *) :: *
-  where
-    Functors '[ ] i = i
-    Functors (x ': xs) i = Functors xs (x i)
+data family Functors (xs :: [* -> *]) (i :: *) :: *
+data instance Functors '[ ] i = FZ i
+data instance Functors (x ': xs) i = FS (x (Functors xs i))
 
-cataN :: (UnFixes xs -> a) -> Fixes xs -> a
-cataN alg = fix $ \f -> alg . undefined f . unFixes
+deriving instance Show i => Show (Functors '[ ] i)
+deriving instance (Show (Functors xs i), Show (x (Functors xs i))) => Show (Functors (x ': xs) i)
+
+instance Functor (Functors '[ ])
+  where
+    fmap f (FZ i) = FZ (f i)
+
+instance (Functor (Functors xs), Functor x) => Functor (Functors (x ': xs))
+  where
+    fmap f (FS x) = FS (fmap (fmap f) x)
 
 -- |
--- λ :type fmap id :: UnFixes '[Maybe] -> UnFixes '[Maybe]
--- fmap id :: UnFixes '[Maybe] -> UnFixes '[Maybe]
---   :: Maybe (Fixes '[Maybe]) -> Maybe (Fixes '[Maybe])
+-- λ :{
+--      let d' = Fixes (FS (Just (FS ('b', FZ (Fixes (FS Nothing))))))
+--          d  = Fixes (FS (Just (FS ('a', FZ d'))))
+--          f (FS Nothing) = [ ]
+--          f (FS (Just (FS (x, FZ xs)))) = x: xs
+--      in cataN f d
+-- :}
+-- "ab"
+
+cataN :: Functor (Functors xs) => (Functors xs a -> a) -> Fixes xs -> a
+cataN alg = fix $ \f -> alg . fmap f . unFixes
