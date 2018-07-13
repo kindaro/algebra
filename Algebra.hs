@@ -9,6 +9,7 @@
   , TypeOperators
   , StandaloneDeriving
   , FlexibleContexts
+  , MultiParamTypeClasses
   #-}
 
 module Algebra where
@@ -187,3 +188,33 @@ instance (Functor (Functors xs), Functor x) => Functor (Functors (x ': xs))
 
 cataN :: Functor (Functors xs) => (Functors xs a -> a) -> Fixes xs -> a
 cataN alg = fix $ \f -> alg . fmap f . unFixes
+
+class Iso f g
+  where
+    to :: f -> g
+    from :: g -> f
+
+instance Iso (Functors (x ': xs) i) (x (Functors xs i))
+  where
+    to (FS x) = x
+    from = FS
+
+instance Iso (Functors '[ ] i) i
+  where
+    to (FZ x) = x
+    from = FZ
+
+instance (Iso a b, Functor f) => Iso (f a) (f b)
+  where
+    to = fmap to
+    from = fmap from
+
+-- |
+-- λ x  = Just (1 :: Int)
+-- λ x' = (FS (Just (FZ (1 :: Int))))
+-- λ (to . (to :: Functors '[Maybe] Int -> Maybe (Functors '[ ] Int))) x' :: Maybe Int
+-- Just 1
+-- λ (from . (from :: Maybe Int -> Maybe (Functors '[ ] Int))) x :: Functors '[Maybe] Int
+-- FS (Just (FZ 1))
+
+-- instance Iso (Functors xs i) (Functors' xs i)  -- TODO.
