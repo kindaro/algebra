@@ -43,10 +43,16 @@ y 1 = Polynomial [0]
 y i | i < 0 = error "TODO"
     | otherwise = Polynomial [1 - i, 1] * Polynomial [-i, 1] + y (i - 1)
 
-instance Show a => Show (Polynomial a) where
-    show (Polynomial (x:xs)) = show (Polynomial xs) ++ " + " ++ show x  -- Not that easy.
-        -- What about "x^2 + x + n"?
+instance (Show a, Eq a, Num a) => Show (Polynomial a) where
+
     show (Polynomial [ ]) = "0"
+
+    show (Polynomial coefs) = unwords $ showOne <$> coefs
+      where
+        showOne :: a -> String
+        showOne 0 = "+ _"
+        showOne x | signum x == 1 = "+" ++ show (abs x)
+                  | otherwise     = "-" ++ show (abs x)
 
 computeAt :: forall a b. (Integral a, Num b) => Polynomial a -> b -> b
 computeAt (Polynomial coefs) x = sum $ zipWith computeOne coefs [0..]
