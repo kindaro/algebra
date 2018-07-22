@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Polynomial where
 
@@ -10,6 +11,10 @@ import Data.Align
 import Data.Monoid
 
 newtype Polynomial a = Polynomial { unPolynomial :: [a] }
+
+pattern P x = Polynomial x
+
+unP = unPolynomial
 
 class Ring a where
     (+), (*) :: a -> a -> a
