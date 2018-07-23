@@ -142,6 +142,15 @@ deriving instance Show (g (f (Fix2 f g))) => Show (Fix2 f g)
 cata2 :: (Functor f, Functor g) => (g (f x) -> x) -> Fix2 f g -> x
 cata2 alg = fix $ \f -> alg . (fmap.fmap) f . unFix2
 
+cataM2 :: (Traversable f, Traversable g, Monad m) => (g (f x) -> m x) -> Fix2 f g -> m x
+cataM2 alg = fix $ \f x -> alg =<< ((traverse.traverse) f . unFix2 $ x)
+
+ana2 :: (Functor f, Functor g) => (x -> g (f x)) -> x -> Fix2 f g
+ana2 coAlg = fix $ \f -> Fix2 . (fmap.fmap) f . coAlg
+
+anaM2 :: (Traversable f, Traversable g, Monad m) => (x -> m (g (f x))) -> x -> m (Fix2 f g)
+anaM2 coAlg = fix $ \f x -> fmap Fix2 . (traverse.traverse) f =<< coAlg x
+
 -- Fix of arbitrary arity:
 -- -----------------------
 
