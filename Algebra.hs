@@ -16,6 +16,8 @@ module Algebra where
 
 import Control.DeepSeq (NFData, rnf)
 import Data.Function (fix)
+import Control.Applicative (liftA2)
+import Control.Monad (join)
 
 -- $setup
 -- λ import Control.Monad.Identity (runIdentity)
@@ -170,12 +172,17 @@ type family UnFixes (xs :: [* -> *]) :: *
     UnFixes '[ ] = Functors '[ ] (Fixes '[ ])
     UnFixes xs = Functors xs (Fixes xs)
 
+type family Functors' (xs :: [* -> *]) (i :: *) :: *
+  where
+    Functors' '[ ] i = i
+    Functors' (x ': xs) i = Functors' xs (x i)
+
 data family Functors (xs :: [* -> *]) (i :: *) :: *
 data instance Functors '[ ] i = FZ i
 data instance Functors (x ': xs) i = FS (x (Functors xs i))
 
 deriving instance Show i => Show (Functors '[ ] i)
-deriving instance (Show (Functors xs i), Show (x (Functors xs i))) => Show (Functors (x ': xs) i)
+deriving instance Show (x (Functors xs i)) => Show (Functors (x ': xs) i)
 
 instance Functor (Functors '[ ])
   where
@@ -218,6 +225,47 @@ instance (Iso a b, Functor f) => Iso (f a) (f b)
     to = fmap to
     from = fmap from
 
+instance Applicative (Functors '[ ])
+  where
+    pure = FZ
+    FZ f <*> x = fmap f x
+
+instance (Applicative x, Applicative (Functors xs)) => Applicative (Functors (x ': xs))
+  where
+    pure = FS . pure . pure
+    (FS f) <*> (FS x) = FS (liftA2 (<*>) f x)
+
+instance Monad (Functors '[ ])
+  where
+    (FZ x) >>= f = f x
+
+-- instance (Applicative x, Traversable x, Monad (Functors xs)) => Monad (Functors (x ': xs))
+--   where
+--     (FS x) >>= f = _
+
+unZ :: Functors '[ ] i -> i
+unZ (FZ x) = x
+unS :: Functors (x ': xs) i -> x (Functors xs i)
+unS (FS x) = x
+
+liftF :: Functor m => (a -> m b) -> a -> Functors '[m] b
+liftF = fmap (FS . fmap FZ)
+
+-- |
+-- λ f = liftF (replicate 2)
+-- λ FS [pure 1, pure 2, pure 3] >>= f
+-- FS [FZ 1,FZ 1,FZ 2,FZ 2,FZ 3,FZ 3]
+
+instance Monad x => Monad (Functors '[x])
+  where
+    (FS x) >>= f = FS . join . fmap unS . fmap unZ . (fmap . fmap) f $ x
+
+-- instance (Iso (Functors xs i) a) => Iso (Functors (x ': xs) i) (x a)
+--   where
+--     to (FS x) = 
+
+-- type family Chain 
+
 -- |
 -- λ x  = Just (1 :: Int)
 -- λ x' = (FS (Just (FZ (1 :: Int))))
@@ -226,4 +274,8 @@ instance (Iso a b, Functor f) => Iso (f a) (f b)
 -- λ (from . (from :: Maybe Int -> Maybe (Functors '[ ] Int))) x :: Functors '[Maybe] Int
 -- FS (Just (FZ 1))
 
--- instance Iso (Functors xs i) (Functors' xs i)  -- TODO.
+-- instance Iso (Functors xs i) (Functors' xs i)
+
+-- data family F (xs :: '[* -> *]) :: * -> *
+-- data instance F  '[ ] = 
+    
