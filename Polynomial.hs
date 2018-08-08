@@ -26,32 +26,33 @@ pattern P x = Polynomial x
 unP :: Polynomial a -> [a]
 unP = unPolynomial
 
-instance (Show a, Eq a, Num a) => Show (Polynomial a) where
+instance (Show a, Eq a, Num a) => Show (Polynomial a)
+  where show = showWithVariable "x"
 
-    show (Polynomial [ ]) = "0"
+showWithVariable _ (Polynomial [ ]) = "0"
 
-    show (Polynomial coefs) = init . render . hsep 1 center1 . filter (\b -> cols b /= 0)
-                            $ zipWith3 boxCoefAtPower
-                                (reverse coefs)
-                                [length coefs - 1, length coefs - 2 .. 0]
-                                (True: repeat False)
-      where
-        boxCoefAtPower :: (Num a, Eq a, Show a) => a -> Int -> Bool -> Box
-        boxCoefAtPower 0 _ True = "0"
-        boxCoefAtPower 0 _ False = nullBox
-        boxCoefAtPower c 0 isFirst = hcat center1
-            [ if signum c == -1 then "- " else withDefaultNull isFirst "+ "
-            , (text . show . abs $ c) ]
+showWithVariable s (Polynomial coefs) = init . render . hsep 1 center1 . filter (\b -> cols b /= 0)
+                        $ zipWith3 boxCoefAtPower
+                            (reverse coefs)
+                            [length coefs - 1, length coefs - 2 .. 0]
+                            (True: repeat False)
+  where
+    boxCoefAtPower :: (Num a, Eq a, Show a) => a -> Int -> Bool -> Box
+    boxCoefAtPower 0 _ True = "0"
+    boxCoefAtPower 0 _ False = nullBox
+    boxCoefAtPower c 0 isFirst = hcat center1
+        [ if signum c == -1 then "- " else withDefaultNull isFirst "+ "
+        , (text . show . abs $ c) ]
 
-        boxCoefAtPower c p isFirst = hcat center1
-            [ if signum c == -1 then " - " else withDefaultNull isFirst "+ "
-            , withDefaultNull (abs c == 1) (text . show . abs $ c)
-            , "x"
-            , withDefaultNull (p == 1) (moveUp 2 . text . show $ p) ]
+    boxCoefAtPower c p isFirst = hcat center1
+        [ if signum c == -1 then " - " else withDefaultNull isFirst "+ "
+        , withDefaultNull (abs c == 1) (text . show . abs $ c)
+        , text s
+        , withDefaultNull (p == 1) (moveUp 2 . text . show $ p) ]
 
-        withDefaultNull :: Bool -> Box -> Box
-        withDefaultNull True  _ = nullBox
-        withDefaultNull False b = b
+    withDefaultNull :: Bool -> Box -> Box
+    withDefaultNull True  _ = nullBox
+    withDefaultNull False b = b
 
 -- ^ Polynomials are displayed as usual.
 --
