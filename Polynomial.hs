@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Polynomial where
 
@@ -123,3 +124,22 @@ computeAt (Polynomial coefs) x = sum $ zipWith computeOne coefs [0..]
 
 (#@) :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
 (#@) = computeAt
+
+derivative :: (Num a, Enum a) => Polynomial a -> Polynomial a
+derivative (Polynomial (_:cs)) = Polynomial $ zipWith (Prelude.*) cs [1..]
+derivative (Polynomial [ ]) = Polynomial [ ]
+
+binomial n k | k > n = 0 | otherwise = product [1..n] `div` (product [1..k] * product [1..n-k])
+-- ^
+-- α \x -> x >= 0 ==> (sum $ binomial x <$> [0..x]) == 2 ^ x
+
+binomialPolynomial p = Polynomial $ binomial p <$> [0..p]
+
+integerDerivative :: (Num a, Enum a, Integral a) => Polynomial a -> Polynomial a
+integerDerivative p@(Polynomial xs) = Polynomial . reverse . unP $ substitutedSum #+ invert p
+  where
+    substitutedSum = foldl' (#+) (Polynomial [ ]) $ zipWith integerDerivativeOne xs [0..]
+    integerDerivativeOne x p = x #> binomialPolynomial p
+
+differential :: (Num a, Enum a) => Polynomial a -> Polynomial a
+differential p = p #+ (invert . derivative $ p)
