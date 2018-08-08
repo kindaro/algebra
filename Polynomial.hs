@@ -6,11 +6,12 @@
 
 module Polynomial where
 
-import Prelude hiding ((+), (*), (*>))
+import Prelude
 import qualified Prelude
 import Data.Align
 import Data.Monoid
 import Text.PrettyPrint.Boxes
+import Data.List (foldl')
 
 -- $setup
 -- λ :set -XAllowAmbiguousTypes
@@ -65,55 +66,59 @@ instance (Show a, Eq a, Num a) => Show (Polynomial a) where
 -- <BLANKLINE>
 
 class Ring a where
-    (+), (*) :: a -> a -> a
-    infixl 6 +
-    infixl 7 *
+    (#+), (#*) :: a -> a -> a
+    infixl 6 #+
+    infixl 7 #*
+
+    invert :: a -> a
 
 instance Num a => Ring (Polynomial a) where
-    (Polynomial xs) + (Polynomial ys)
+    (Polynomial xs) #+ (Polynomial ys)
         = Polynomial $ getSum <$> salign (Sum <$> xs) (Sum <$> ys)
 
-    p@ (Polynomial (x:xs)) * q@ (Polynomial ys)
-        = Polynomial ((x Prelude.*) <$> ys) + Polynomial (0: unPolynomial (Polynomial xs * Polynomial ys))
-    (Polynomial [ ]) * _ = Polynomial [ ]
+    p@ (Polynomial (x:xs)) #* q@ (Polynomial ys)
+        = Polynomial ((x *) <$> ys) #+ Polynomial (0: unPolynomial (Polynomial xs #* Polynomial ys))
+    (Polynomial [ ]) #* _ = Polynomial [ ]
+
+    invert (Polynomial xs) = Polynomial (negate <$> xs)
 
 -- ^ Polynomials may be added:
 --
--- λ P [1] + P [0,2]
+-- λ P [1] #+ P [0,2]
 -- 2x + 1
 --
 --   And multiplied:
 --
--- λ Polynomial [1, 1] * Polynomial [1, 1] * Polynomial [1, 1]
+-- λ Polynomial [1, 1] #* Polynomial [1, 1] #* Polynomial [1, 1]
 --  3     2         
 -- x  + 3x  + 3x + 1
 -- <BLANKLINE>
 
 class VectorSpace k v where
-    (*>) :: k -> v -> v
+    (#>) :: k -> v -> v
 
 instance (Integral n, Num x) => VectorSpace n x where
-    n *> x = fromIntegral n Prelude.* x
+    n #> x = fromIntegral n Prelude.* x
 
 instance {-# OVERLAPS #-} Num a => VectorSpace a (Polynomial a)
   where
-    y *> (Polynomial xs) = Polynomial $ (Prelude.* y) <$> xs
+    y #> (Polynomial xs) = Polynomial $ (Prelude.* y) <$> xs
 
 -- ^ Polynomials may be multiplied by a scalar:
 --
--- λ 2 *> P [0,1,2,3]
+-- λ 2 #> P [0,1,2,3]
 --   3     2
 -- 6x  + 4x  + 2x
 -- <BLANKLINE>
 
 -- | Polynomials may be computed:
--- λ P [0,1,2,3] @@ 10
+-- λ P [0,1,2,3] #@ 10
 -- 3210
 
 computeAt :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
 computeAt (Polynomial coefs) x = sum $ zipWith computeOne coefs [0..]
   where
-    computeOne coef power = coef *> (x ^ power)
+    computeOne coef power = coef #> (x ^ power)
 
-(@@) :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
-(@@) = computeAt
+(#@) :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
+(#@) = computeAt
