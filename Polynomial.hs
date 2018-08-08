@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -9,12 +10,59 @@ import Prelude hiding ((+), (*), (*>))
 import qualified Prelude
 import Data.Align
 import Data.Monoid
+import Text.PrettyPrint.Boxes
 
+-- $setup
+-- λ :set -XAllowAmbiguousTypes
+-- λ :set -XFlexibleContexts
+
+-- | A type for polynomials, expressed as the list of coefficients, the highest power the last.
 newtype Polynomial a = Polynomial { unPolynomial :: [a] }
 
+pattern P :: [a] -> Polynomial a
 pattern P x = Polynomial x
 
+unP :: Polynomial a -> [a]
 unP = unPolynomial
+
+instance (Show a, Eq a, Num a) => Show (Polynomial a) where
+
+    show (Polynomial [ ]) = "0"
+
+    show (Polynomial coefs) = init . render . hsep 1 center1 . filter (\b -> cols b /= 0)
+                            $ zipWith3 boxCoefAtPower
+                                (reverse coefs)
+                                [length coefs - 1, length coefs - 2 .. 0]
+                                (True: repeat False)
+      where
+        boxCoefAtPower :: (Num a, Eq a, Show a) => a -> Int -> Bool -> Box
+        boxCoefAtPower 0 _ True = "0"
+        boxCoefAtPower 0 _ False = nullBox
+        boxCoefAtPower c 0 isFirst = hcat center1
+            [ if signum c == -1 then "- " else withDefaultNull isFirst "+ "
+            , (text . show . abs $ c) ]
+
+        boxCoefAtPower c p isFirst = hcat center1
+            [ if signum c == -1 then " - " else withDefaultNull isFirst "+ "
+            , withDefaultNull (abs c == 1) (text . show . abs $ c)
+            , "x"
+            , withDefaultNull (p == 1) (moveUp 2 . text . show $ p) ]
+
+        withDefaultNull :: Bool -> Box -> Box
+        withDefaultNull True  _ = nullBox
+        withDefaultNull False b = b
+
+-- ^ Polynomials are displayed as usual.
+--
+-- λ P [0,1,2,3]
+--   3     2
+-- 3x  + 2x  + x
+-- <BLANKLINE>
+--
+-- λ P [2,0,0,0,0,2]
+--   5
+-- 2x  + 2
+-- <BLANKLINE>
 
 class Ring a where
     (+), (*) :: a -> a -> a
@@ -29,9 +77,17 @@ instance Num a => Ring (Polynomial a) where
         = Polynomial ((x Prelude.*) <$> ys) + Polynomial (0: unPolynomial (Polynomial xs * Polynomial ys))
     (Polynomial [ ]) * _ = Polynomial [ ]
 
--- |
+-- ^ Polynomials may be added:
+--
+-- λ P [1] + P [0,2]
+-- 2x + 1
+--
+--   And multiplied:
+--
 -- λ Polynomial [1, 1] * Polynomial [1, 1] * Polynomial [1, 1]
--- Polynomial {unPolynomial = [1,3,3,1]}
+--  3     2         
+-- x  + 3x  + 3x + 1
+-- <BLANKLINE>
 
 class VectorSpace k v where
     (*>) :: k -> v -> v
@@ -39,25 +95,25 @@ class VectorSpace k v where
 instance (Integral n, Num x) => VectorSpace n x where
     n *> x = fromIntegral n Prelude.* x
 
-y 1 = Polynomial [0]
-y i | i < 0 = error "TODO"
-    | otherwise = Polynomial [1 - i, 1] * Polynomial [-i, 1] + y (i - 1)
+instance {-# OVERLAPS #-} Num a => VectorSpace a (Polynomial a)
+  where
+    y *> (Polynomial xs) = Polynomial $ (Prelude.* y) <$> xs
 
-instance (Show a, Eq a, Num a) => Show (Polynomial a) where
+-- ^ Polynomials may be multiplied by a scalar:
+--
+-- λ 2 *> P [0,1,2,3]
+--   3     2
+-- 6x  + 4x  + 2x
+-- <BLANKLINE>
 
-    show (Polynomial [ ]) = "0"
+-- | Polynomials may be computed:
+-- λ P [0,1,2,3] @@ 10
+-- 3210
 
-    show (Polynomial coefs) = unwords $ showOne <$> coefs
-      where
-        showOne :: a -> String
-        showOne 0 = "+ _"
-        showOne x | signum x == 1 = "+" ++ show (abs x)
-                  | otherwise     = "-" ++ show (abs x)
-
-computeAt :: forall a b. (Integral a, Num b) => Polynomial a -> b -> b
+computeAt :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
 computeAt (Polynomial coefs) x = sum $ zipWith computeOne coefs [0..]
   where
-    computeOne :: a -> Integer -> b
     computeOne coef power = coef *> (x ^ power)
 
+(@@) :: (VectorSpace a b, Num b) => Polynomial a -> b -> b
 (@@) = computeAt
