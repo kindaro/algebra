@@ -13,6 +13,7 @@ dependencies:
     - filepath
     - text
     - array
+    - these
 
 library:
   source-dirs: .
@@ -23,6 +24,7 @@ library:
       - Filesystem
       - Zip
       - Cartesian
+      - Polynomial
   other-modules: []
 
 tests:
